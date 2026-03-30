@@ -35,5 +35,3 @@ Project specific
 *.log
 *.tmp
 test_results.txt
-*.idea
-*.gitignore
