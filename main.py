@@ -1,17 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Система тестирования для формата с @ (вопрос) и #$ (правильный ответ)
+Поддерживает .txt и .docx файлы
+"""
+
 import re
 import random
 import os
 import sys
 import zipfile
 import xml.etree.ElementTree as ET
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from pathlib import Path
+
+__version__ = "1.0.0"
+__author__ = "Your Name"
 
 
 class TestQuestion:
+    """Класс для хранения вопроса и вариантов ответов"""
+
     def __init__(self, text: str, correct_answer: str, all_answers: List[str]):
         self.text = text
         self.correct_answer = correct_answer
@@ -29,17 +39,14 @@ class DocxReader:
         """Извлекает текст из .docx файла"""
         try:
             with zipfile.ZipFile(filepath, 'r') as docx_zip:
-                # Читаем основной документ
                 with docx_zip.open('word/document.xml') as xml_file:
                     tree = ET.parse(xml_file)
                     root = tree.getroot()
 
-                    # Пространства имен Word
                     namespaces = {
                         'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
                     }
 
-                    # Извлекаем весь текст из параграфов
                     paragraphs = root.findall('.//w:p', namespaces)
                     text_content = []
 
@@ -62,12 +69,10 @@ class TestParser:
     def parse_from_file(filepath: str) -> List[TestQuestion]:
         """Разбирает файл с тестами и возвращает список вопросов"""
         try:
-            # Проверяем, существует ли файл
             if not os.path.isfile(filepath):
                 print(f"Ошибка: '{filepath}' не является файлом или не существует!")
                 return []
 
-            # Определяем тип файла
             file_ext = os.path.splitext(filepath)[1].lower()
             content = ""
 
@@ -78,7 +83,6 @@ class TestParser:
                     print("Не удалось извлечь текст из .docx файла!")
                     return []
             else:
-                # Для текстовых файлов пробуем разные кодировки
                 encodings = ['utf-8', 'windows-1251', 'cp1251', 'latin-1']
 
                 for encoding in encodings:
@@ -103,7 +107,6 @@ class TestParser:
         """Разбирает текст теста и возвращает список вопросов"""
         questions = []
 
-        # Разделяем текст на блоки вопросов (по символу @)
         blocks = re.split(r'@', text)
 
         for block in blocks:
@@ -124,23 +127,19 @@ class TestParser:
                 if not line:
                     continue
 
-                # Если строка начинается с #$, это правильный ответ
                 if line.startswith('#$'):
                     answer = line[2:].strip()
                     answers.append(answer)
                     correct_answer = answer
-                # Если строка начинается с #, это обычный ответ
                 elif line.startswith('#'):
                     answer = line[1:].strip()
                     answers.append(answer)
-                # Иначе это текст вопроса
                 else:
                     if question_text:
                         question_text += " " + line
                     else:
                         question_text = line
 
-            # Если нашли вопрос с ответами
             if question_text and answers and correct_answer:
                 questions.append(TestQuestion(question_text, correct_answer, answers))
 
@@ -148,10 +147,10 @@ class TestParser:
 
 
 class FileSelector:
-    """Выбор файла с тестами"""
+    """Интерактивный выбор файла с тестами"""
 
     @staticmethod
-    def select_file() -> str:
+    def select_file() -> Optional[str]:
         """Интерактивный выбор файла"""
         while True:
             print("\n" + "=" * 70)
@@ -377,12 +376,12 @@ def main():
     print("=" * 70)
     print("              СИСТЕМА ТЕСТИРОВАНИЯ")
     print("=" * 70)
+    print(f"\nВерсия: {__version__}")
     print("\nДанная программа читает тесты из файла и проводит")
     print("случайную выборку вопросов для тестирования.")
     print("Формат файла: @ - вопрос, #$ - правильный ответ")
     print("=" * 70)
 
-    # Выбираем файл
     selector = FileSelector()
     filepath = selector.select_file()
 
@@ -392,7 +391,6 @@ def main():
 
     print(f"\n📖 Чтение файла: {filepath}")
 
-    # Парсим тесты
     parser = TestParser()
     questions = parser.parse_from_file(filepath)
 
@@ -403,7 +401,6 @@ def main():
 
     print(f"✅ Найдено вопросов: {len(questions)}")
 
-    # Выбор количества вопросов
     print(f"\n📋 Доступно {len(questions)} вопросов.")
     while True:
         try:
@@ -416,13 +413,11 @@ def main():
         except ValueError:
             print("Пожалуйста, введите целое число")
 
-    # Создаём тест
     taker = TestTaker(questions)
 
     if not taker.select_random_questions(num_questions):
         return
 
-    # Запускаем тестирование
     taker.run()
 
     print("\n✨ Спасибо за прохождение теста! ✨")
